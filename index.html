@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <title>Meal Tracker</title>
+  <meta name="description" content="Track calories, meals and weight. All data stays on your device.">
+  <meta name="theme-color" content="#f3f5f4" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0b0f0d" media="(prefers-color-scheme: dark)">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Meals">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <main>
+    <!-- ================= FOOD ================= -->
+    <section id="tab-food" class="tab active">
+      <header class="page-head date-head">
+        <button id="prevDay" class="icon-btn" aria-label="Previous day">
+          <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+        </button>
+        <label class="date-label">
+          <span id="dateLabel"></span>
+          <input type="date" id="datePick" aria-label="Pick a date">
+        </label>
+        <button id="nextDay" class="icon-btn" aria-label="Next day">
+          <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+        </button>
+      </header>
+      <div class="center-row"><button id="todayBtn" class="pill hidden">Back to today</button></div>
+
+      <div id="setupBanner" class="banner hidden">
+        <span>Set up your profile so the app can work out how many calories you should eat.</span>
+        <button class="btn primary small" data-goto="settings">Set up</button>
+      </div>
+      <div id="backupNudge" class="banner warn hidden">
+        <span id="backupNudgeText"></span>
+        <button class="btn primary small" data-goto="settings">Back up</button>
+      </div>
+
+      <div class="card hero">
+        <div class="ring-wrap">
+          <svg viewBox="0 0 120 120" class="ring">
+            <defs>
+              <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#34d399"/><stop offset="1" stop-color="#16a34a"/>
+              </linearGradient>
+            </defs>
+            <circle cx="60" cy="60" r="52" class="ring-bg"/>
+            <circle cx="60" cy="60" r="52" class="ring-fg" id="ringFg"/>
+          </svg>
+          <div class="ring-center">
+            <div id="ringNum" class="ring-num">0</div>
+            <div id="ringLabel" class="ring-label">kcal left</div>
+          </div>
+        </div>
+        <div class="sum-stats">
+          <div><strong id="sTarget">—</strong><span>Target</span></div>
+          <div><strong id="sEaten">0</strong><span>Eaten</span></div>
+          <div><strong id="sRem">—</strong><span id="sRemLabel">Remaining</span></div>
+        </div>
+        <div id="macros" class="macros"></div>
+      </div>
+
+      <div class="card weight-quick">
+        <div class="wq-text">
+          <h3>Weight</h3>
+          <p id="qwInfo" class="muted small"></p>
+        </div>
+        <form id="qwForm" class="inline-form">
+          <div class="input-unit">
+            <input type="number" id="qwInput" step="0.1" min="20" max="700" inputmode="decimal" aria-label="Weight for this day">
+            <span class="unit-label"></span>
+          </div>
+          <button class="btn primary">Save</button>
+        </form>
+      </div>
+
+      <div id="meals"></div>
+
+      <div class="row-actions">
+        <button id="copyPrev" class="btn ghost small">Copy previous day</button>
+        <button id="guideBtn" class="btn ghost small">Portion guide</button>
+      </div>
+    </section>
+
+    <!-- ================= WEIGHT ================= -->
+    <section id="tab-weight" class="tab">
+      <header class="page-head"><h1>Weight</h1></header>
+
+      <div class="card">
+        <h3>Log weight</h3>
+        <form id="wForm" class="inline-form">
+          <input type="date" id="wDate" required aria-label="Date">
+          <div class="input-unit">
+            <input type="number" id="wVal" step="0.1" min="20" max="700" inputmode="decimal" placeholder="0.0" required aria-label="Weight">
+            <span class="unit-label"></span>
+          </div>
+          <button class="btn primary">Save</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>Trend</h3>
+          <div class="seg" id="wRange">
+            <button data-r="14">2W</button>
+            <button data-r="30">1M</button>
+            <button data-r="90" class="active">3M</button>
+            <button data-r="180">6M</button>
+            <button data-r="365">1Y</button>
+            <button data-r="0">All</button>
+          </div>
+        </div>
+        <div class="chart-box"><canvas id="wChart"></canvas></div>
+        <div id="wEmpty" class="empty hidden">Log your first weight to start the chart.</div>
+        <p class="muted small chart-note">Daily weight jumps around from water and salt. The blue 7-day average is your real trend.</p>
+      </div>
+
+      <div id="wStats" class="stat-grid"></div>
+
+      <div class="card">
+        <h3>Log</h3>
+        <div id="wList" class="wlist"></div>
+      </div>
+    </section>
+
+    <!-- ================= HISTORY ================= -->
+    <section id="tab-history" class="tab">
+      <header class="page-head"><h1>History</h1></header>
+      <div class="card">
+        <div class="card-head">
+          <h3>Calories vs target</h3>
+          <div class="seg" id="hRange">
+            <button data-r="7">7D</button>
+            <button data-r="30" class="active">30D</button>
+            <button data-r="90">90D</button>
+          </div>
+        </div>
+        <div class="chart-box"><canvas id="hChart"></canvas></div>
+      </div>
+      <div id="hStats" class="stat-grid"></div>
+    </section>
+
+    <!-- ================= SETTINGS ================= -->
+    <section id="tab-settings" class="tab">
+      <header class="page-head"><h1>Settings</h1></header>
+
+      <div id="welcome" class="card welcome hidden">
+        <h2>Welcome</h2>
+        <p>Fill in your details and the app will work out your daily calorie target.</p>
+        <p class="muted small">Used the app before? Bring your data back from a backup file.</p>
+        <button type="button" class="btn ghost" data-restore>Restore from backup</button>
+      </div>
+
+      <form id="profileForm" class="card form">
+        <h3>Your profile</h3>
+        <div class="field">
+          <span class="lbl">Units</span>
+          <div class="seg full" id="unitSeg">
+            <button type="button" data-u="kg">kg / cm</button>
+            <button type="button" data-u="lb">lb / ft</button>
+          </div>
+        </div>
+        <div class="row-2">
+          <label class="field"><span class="lbl">Sex</span>
+            <select id="pSex"><option value="male">Male</option><option value="female">Female</option></select>
+          </label>
+          <label class="field"><span class="lbl">Age</span>
+            <input type="number" id="pAge" min="13" max="100" inputmode="numeric" required>
+          </label>
+        </div>
+        <div class="field" id="heightCmWrap">
+          <label class="field"><span class="lbl">Height (cm)</span><input type="number" id="pHeightCm" min="100" max="250" step="0.5" inputmode="decimal"></label>
+        </div>
+        <div class="row-2 hidden" id="heightFtWrap">
+          <label class="field"><span class="lbl">Height (ft)</span><input type="number" id="pHeightFt" min="3" max="8" inputmode="numeric"></label>
+          <label class="field"><span class="lbl">(in)</span><input type="number" id="pHeightIn" min="0" max="11.9" step="0.5" inputmode="decimal"></label>
+        </div>
+        <div class="row-2">
+          <label class="field"><span class="lbl">Current weight (<span class="unit-label"></span>)</span>
+            <input type="number" id="pWeight" step="0.1" min="20" max="700" inputmode="decimal">
+          </label>
+          <label class="field"><span class="lbl">Goal weight (<span class="unit-label"></span>)</span>
+            <input type="number" id="pGoalWeight" step="0.1" min="20" max="700" inputmode="decimal" placeholder="optional">
+          </label>
+        </div>
+        <label class="field"><span class="lbl">Activity level</span><select id="pActivity"></select></label>
+        <label class="field"><span class="lbl">Goal</span><select id="pGoal"></select></label>
+        <label class="field"><span class="lbl">Custom daily target (optional)</span>
+          <input type="number" id="pManual" min="800" max="6000" step="10" inputmode="numeric" placeholder="empty = calculate for me">
+        </label>
+        <button class="btn primary big">Save profile</button>
+      </form>
+
+      <div class="card">
+        <h3>Your numbers</h3>
+        <div id="calcBox" class="stat-grid inner"></div>
+        <p class="muted small">Calculated with the Mifflin-St Jeor equation and updated as your weight changes. If your 7-day
+          average isn't moving as expected after 2–3 weeks, adjust the target by 100–200 kcal.</p>
+      </div>
+
+      <div class="card">
+        <h3>Backup</h3>
+        <p class="muted small">Your data lives on this device only. A backup file in your phone's storage survives
+          deleting and reinstalling the app.</p>
+        <div id="backupStatus" class="backup-status"></div>
+        <div class="btn-col">
+          <button type="button" id="autoBackupBtn" class="btn primary hidden"></button>
+          <button type="button" id="exportBtn" class="btn ghost">Save a backup file now</button>
+          <button type="button" class="btn ghost" data-restore>Restore from backup</button>
+          <input type="file" id="importFile" accept=".json,application/json,text/plain" hidden>
+        </div>
+      </div>
+
+      <div id="installCard" class="card hidden">
+        <h3>Install on this phone</h3>
+        <p id="installText" class="muted small"></p>
+        <button type="button" id="installBtn" class="btn primary hidden">Install app</button>
+      </div>
+
+      <div class="card">
+        <h3>Danger zone</h3>
+        <button type="button" id="resetBtn" class="btn danger">Delete all data</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- ================= BOTTOM NAV ================= -->
+  <nav class="tabs" aria-label="Sections">
+    <button data-tab="food" class="active">
+      <svg viewBox="0 0 24 24"><path d="M7 3v18M4 3v5a3 3 0 0 0 6 0V3M17 21v-8c-2 0-3.5-1.2-3.5-4.5S15 3 17 3v10"/></svg>
+      <span>Food</span>
+    </button>
+    <button data-tab="weight">
+      <svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg>
+      <span>Weight</span>
+    </button>
+    <button data-tab="history">
+      <svg viewBox="0 0 24 24"><path d="M5 20V11M12 20V4M19 20v-6"/></svg>
+      <span>History</span>
+    </button>
+    <button data-tab="settings">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      <span>Settings</span>
+    </button>
+  </nav>
+
+  <!-- ================= ADD FOOD ================= -->
+  <dialog id="addDlg" class="sheet full">
+    <div class="dlg" tabindex="-1" autofocus>
+      <div class="dlg-head">
+        <h2 id="addTitle">Add to <select id="addMeal"></select></h2>
+        <button class="icon-btn" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+      <div class="seg full" id="addModes">
+        <button data-mode="search" class="active">Food list</button>
+        <button data-mode="quick">Quick add</button>
+        <button data-mode="custom">New food</button>
+      </div>
+
+      <div id="mode-search" class="mode">
+        <input id="foodSearch" type="search" placeholder="Search chicken, rice, pizza…" autocomplete="off" enterkeyhint="search">
+        <div class="chips" id="catChips"></div>
+        <div id="foodResults" class="results"></div>
+      </div>
+
+      <form id="mode-quick" class="mode form hidden">
+        <p class="muted small">Know the calories already, from a package label or a restaurant menu? Enter them directly.</p>
+        <label class="field"><span class="lbl">Name</span><input id="qName" placeholder="e.g. Restaurant pasta" required></label>
+        <label class="field"><span class="lbl">Calories (kcal)</span><input id="qKcal" type="number" min="0" max="10000" inputmode="numeric" required></label>
+        <div class="row-3">
+          <label class="field"><span class="lbl">Protein g</span><input id="qP" type="number" min="0" step="0.1" inputmode="decimal" placeholder="optional"></label>
+          <label class="field"><span class="lbl">Carbs g</span><input id="qC" type="number" min="0" step="0.1" inputmode="decimal" placeholder="optional"></label>
+          <label class="field"><span class="lbl">Fat g</span><input id="qF" type="number" min="0" step="0.1" inputmode="decimal" placeholder="optional"></label>
+        </div>
+        <button class="btn primary big">Add</button>
+      </form>
+
+      <form id="mode-custom" class="mode form hidden">
+        <p class="muted small">Save something you eat often, like your usual sandwich, under <b>My foods</b>.</p>
+        <label class="field"><span class="lbl">Name</span><input id="cName" placeholder="e.g. Mom's lasagna" required></label>
+        <div class="row-2">
+          <label class="field"><span class="lbl">Portion</span><input id="cUnit" placeholder="e.g. 1 bowl" required></label>
+          <label class="field"><span class="lbl">kcal per portion</span><input id="cKcal" type="number" min="0" max="10000" inputmode="numeric" required></label>
+        </div>
+        <div class="row-3">
+          <label class="field"><span class="lbl">Protein g</span><input id="cP" type="number" min="0" step="0.1" inputmode="decimal" placeholder="optional"></label>
+          <label class="field"><span class="lbl">Carbs g</span><input id="cC" type="number" min="0" step="0.1" inputmode="decimal" placeholder="optional"></label>
+          <label class="field"><span class="lbl">Fat g</span><input id="cF" type="number" min="0" step="0.1" inputmode="decimal" placeholder="optional"></label>
+        </div>
+        <button class="btn primary big">Save and add 1 portion</button>
+      </form>
+
+      <div id="portion" class="portion hidden">
+        <div class="portion-head">
+          <div><strong id="pName"></strong><div id="pUnit" class="muted small"></div></div>
+          <button class="icon-btn small" id="pCancel" aria-label="Cancel"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        </div>
+        <div class="qty-row">
+          <div class="stepper">
+            <button type="button" data-step="-0.25" aria-label="Less">&minus;</button>
+            <input id="pQty" type="number" min="0.25" max="50" step="0.25" value="1" inputmode="decimal" aria-label="Amount">
+            <button type="button" data-step="0.25" aria-label="More">+</button>
+          </div>
+          <div class="qchips">
+            <button type="button" data-set="0.5">½</button>
+            <button type="button" data-set="1">1</button>
+            <button type="button" data-set="1.5">1½</button>
+            <button type="button" data-set="2">2</button>
+            <button type="button" data-set="3">3</button>
+          </div>
+        </div>
+        <div class="portion-foot">
+          <div id="pTotals"></div>
+          <button id="pAdd" class="btn primary big">Add</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ================= PORTION GUIDE ================= -->
+  <dialog id="guideDlg" class="sheet">
+    <div class="dlg scroll">
+      <div class="dlg-head">
+        <h2>Portions without a scale</h2>
+        <button class="icon-btn" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+      <ul class="guide">
+        <li><b>Palm</b><span>100 g cooked meat, fish or tofu. About a deck of cards.</span></li>
+        <li><b>Fist</b><span>1 cup of rice, pasta, cereal, fruit or vegetables.</span></li>
+        <li><b>Cupped hand</b><span>½ cup, or a small handful of nuts or chips (about 1 oz).</span></li>
+        <li><b>Whole thumb</b><span>1 tablespoon of oil, butter, peanut butter, mayo or dressing.</span></li>
+        <li><b>Thumb tip</b><span>1 teaspoon of sugar or oil.</span></li>
+        <li><b>Two thumbs</b><span>1 oz of cheese.</span></li>
+      </ul>
+      <h3>Better estimates</h3>
+      <ul class="tips">
+        <li><b>Count cooking oil.</b> 1 tbsp is about 120 kcal and it is the most-missed item. Add it on its own.</li>
+        <li><b>Packaged food:</b> the label is exact. Use Quick add with the kcal per serving.</li>
+        <li><b>Eating out:</b> many chains post calories. Otherwise pick the closest food and round up.</li>
+        <li><b>Round up 10–20%</b> when unsure. Almost everyone underestimates portions.</li>
+        <li><b>Calibrate once:</b> serve with measuring cups for a week so you learn what 1 cup looks like on your plate.</li>
+        <li><b>Trust the trend:</b> if your 7-day weight average isn't moving as planned, adjust your target.</li>
+      </ul>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status"></div>
+
+  <script src="vendor/chart.umd.js"></script>
+  <script src="vendor/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <script src="js/foods.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
